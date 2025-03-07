@@ -53,7 +53,6 @@ class DatabaseSchemaExtractor:
                         f"{col_name} ({col_type}) {nullable_str}"
                     )
                 
-                # Get foreign keys
                 try:
                     foreign_keys = inspector.get_foreign_keys(table_name)
                     fk_details = []
