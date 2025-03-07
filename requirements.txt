@@ -6,4 +6,4 @@ langchainplus-sdk
 langchain-ollama
 langchain-openai
 langchain-text-splitters
-python-dotenv
+python-dotenv-1.0.1
