@@ -17,6 +17,7 @@ class DatabaseQueryExecutor:
         with self.Session() as session:
             for query_info in queries:
                 query = query_info['query']
+                print(f"Executing Query:\n{query}")
                 try:
                     
                     result = session.execute(text(query))
