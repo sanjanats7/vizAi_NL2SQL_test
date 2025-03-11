@@ -21,7 +21,7 @@ class SQLQueryItem(BaseModel):
         return round(v, 2)
     @field_validator('chart_type')
     def chart_type_must_be_valid(cls, v):
-        valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut"]
+        valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut", "Radian", "Scatterplot"]
         if v not in valid_chart_types:
             raise ValueError(f'Chart type must be one of: {", ".join(valid_chart_types)}')
         return v
@@ -80,6 +80,10 @@ class FinanceQueryGenerator:
                     * Area: For emphasizing the magnitude of trends over time
                     * Pie: For showing proportions of a whole***
                     * Donut: For showing proportions with a focus on a central value
+                    * Radian: For visualizing circular relationships or cyclical data
+                    * Scatterplot: For showing correlation between two variables
+                - Try to use a variety of chart types across your recommendations, including Radian and Scatterplot where appropriate.
+
     
                 {format_instructions}"""),
             ("human", "Generate SQL queries for the {role} role in the {domain} domain using the database schema provided.")
