@@ -12,12 +12,19 @@ class SQLQueryItem(BaseModel):
     query: str = Field(..., description="SQL query that answers the business question")
     relevance: float = Field(..., ge=0.0, le=1.0, description="Relevance score from 0.0 to 1.0")
     is_time_based: bool = Field(..., description="Whether this query analyzes time-based trends")
+    chart_type: str= Field(..., desctiption="Recommeneded chart type for visualisation of query")
     
     @field_validator('relevance')
     def relevance_must_be_between_0_and_1(cls, v):
         if not 0 <= v <= 1:
             raise ValueError('Relevance must be between 0.0 and 1.0')
         return round(v, 2)
+    @field_validator('chart_type')
+    def chart_type_must_be_valid(cls, v):
+        valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut"]
+        if v not in valid_chart_types:
+            raise ValueError(f'Chart type must be one of: {", ".join(valid_chart_types)}')
+        return v
 
 class SQLQueryResponse(BaseModel):
     queries: List[SQLQueryItem] = Field(..., description="List of generated SQL queries")
@@ -67,6 +74,12 @@ class FinanceQueryGenerator:
                 - Assign a relevance score (0.0-1.0) indicating how valuable each query is for the role
                 - IMPORTANT: For time-based queries, use placeholders '[MIN_DATE]' and '[MAX_DATE]' instead of actual dates.
                     These will be replaced with real dates later.
+                - For each query, recommend ONE of the following chart types that would best visualize the results:
+                    * Bar: For comparing values across categories
+                    * Line: For showing trends over time or continuous data
+                    * Area: For emphasizing the magnitude of trends over time
+                    * Pie: For showing proportions of a whole***
+                    * Donut: For showing proportions with a focus on a central value
     
                 {format_instructions}"""),
             ("human", "Generate SQL queries for the {role} role in the {domain} domain using the database schema provided.")
@@ -117,7 +130,7 @@ class FinanceQueryGenerator:
                 SELECT 
                     GROUP_CONCAT(
                         CONCAT('SELECT MIN(', COLUMN_NAME, ') AS min_date, MAX(', COLUMN_NAME, ') AS max_date FROM ', TABLE_NAME)
-                        SEPARA TOR ' UNION ALL '
+                        SEPARATOR ' UNION ALL '
                     ) AS query_string
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_NAME IN (SELECT TABLE_NAME FROM tables_in_query)
@@ -223,7 +236,9 @@ class FinanceQueryGenerator:
                         question=item.question,
                         query=refined_query,
                         relevance=item.relevance,
-                        is_time_based=True
+                        is_time_based=True,
+                        chart_type = item.chart_type
+                        
                     ))
                 else:
                     refined_queries.append(item)
@@ -237,7 +252,9 @@ class FinanceQueryGenerator:
                     question="Error generating queries",
                     query=f"-- Error: {str(e)}",
                     relevance=0.0,
-                    is_time_based=False
+                    is_time_based=False,
+                    chart_type="line"
+                    
                 )
             ])
     
@@ -256,7 +273,8 @@ class FinanceQueryGenerator:
                 "query": item.query,
                 "explanation": item.question,
                 "relevance": item.relevance,
-                "is_time_based": item.is_time_based
+                "is_time_based": item.is_time_based,
+                "chart_type":item.chart_type
             }
             for item in response.queries
         ]

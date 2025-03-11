@@ -42,6 +42,8 @@ class DatabaseQueryExecutor:
                     results.append({
                         "query": query,
                         "explanation": query_info.get('explanation', 'No explanation provided'),
+                        "relevance": query_info.get('relevance', 0.0),
+                        "chart_type": query_info.get('chart_type', 'Not specified'),
                         "results": query_results
                     })
                     
@@ -49,6 +51,8 @@ class DatabaseQueryExecutor:
                     results.append({
                         "query": query,
                         "explanation": query_info.get('explanation', 'No explanation provided'),
+                        "relevance": query_info.get('relevance', 0.0),
+                        "chart_type": query_info.get('chart_type', 'Not specified'),
                         "error": str(e)
                     })
         

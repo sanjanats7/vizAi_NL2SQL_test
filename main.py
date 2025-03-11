@@ -41,6 +41,8 @@ def main():
             print(f"\n--- Query {i} ---")
             print(f"SQL Query:\n{result['query']}")
             print(f"\nExplanation:\n{result.get('explanation', 'No explanation provided')}")
+            print(f"\nRelevance Score: {result.get('relevance', 'Not available')}")
+            print(f"\nChart Type: {result.get('chart_type', 'Not available')}")
 
             if 'results' in result:
                     print("\n--- Results ---")
