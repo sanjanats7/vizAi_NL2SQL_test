@@ -31,14 +31,6 @@ class SQLQueryResponse(BaseModel):
 
 class FinanceQueryGenerator: 
     def __init__(self, schema: str, api_key: str, db_url: str,db_type:str, model: str = "gemini-1.5-pro"):
-        """
-        Initialize AI-powered query generator
-        
-        :param schema: Database schema description
-        :param api_key: Google API key
-        :param db_url: Database connection URL
-        :param model: LLM model to use
-        """
         self.schema = schema
         self.db_url = db_url
         self.db_type = db_type.lower()
@@ -116,52 +108,94 @@ class FinanceQueryGenerator:
         return sql_query.replace("```sql", "").replace("```", "").strip()
 
     def fetch_relevant_min_max_dates(self, query: str) -> tuple:
-        """
-        Fetch the min and max timestamps for the tables referenced in the given SQL query.
-        
-        :param query: The SQL query for which we need the relevant date range
-        :return: Tuple (min_date, max_date) for the relevant tables
-        """
-        engine = create_engine(self.db_url)
-        with engine.connect() as connection:
-            table_names_query = text("""
-                WITH tables_in_query AS (
-                    SELECT TABLE_NAME 
-                    FROM INFORMATION_SCHEMA.TABLES 
-                    WHERE TABLE_SCHEMA = DATABASE() 
-                        AND LOCATE(TABLE_NAME, :query) > 0
-                )
-                SELECT 
-                    GROUP_CONCAT(
-                        CONCAT('SELECT MIN(', COLUMN_NAME, ') AS min_date, MAX(', COLUMN_NAME, ') AS max_date FROM ', TABLE_NAME)
-                        SEPARATOR ' UNION ALL '
-                    ) AS query_string
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME IN (SELECT TABLE_NAME FROM tables_in_query)
-                    AND DATA_TYPE IN ('date', 'datetime', 'timestamp', 'time');
-            """)
-            
-            result = connection.execute(table_names_query, {"query": query})
-            query_string = result.fetchone()[0]
+        default_min_date = "2020-01-01"
+        default_max_date = "2023-12-31"
 
-            if not query_string:
-                return None, None 
+        try:
+            engine = create_engine(self.db_url)
+            table_names_query = None
+            with engine.connect() as connection:
+                if self.db_type == "mysql":
+                    table_names_query = text("""
+                        WITH tables_in_query AS (
+                            SELECT TABLE_NAME 
+                            FROM INFORMATION_SCHEMA.TABLES 
+                            WHERE TABLE_SCHEMA = DATABASE() 
+                                AND LOCATE(TABLE_NAME, :query) > 0
+                        )
+                        SELECT 
+                            GROUP_CONCAT(
+                                CONCAT('SELECT MIN(', COLUMN_NAME, ') AS min_date, MAX(', COLUMN_NAME, ') AS max_date FROM ', TABLE_NAME)
+                                SEPARATOR ' UNION ALL '
+                            ) AS query_string
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME IN (SELECT TABLE_NAME FROM tables_in_query)
+                            AND DATA_TYPE IN ('date', 'datetime', 'timestamp', 'time');
+                    """)
 
-            final_result = connection.execute(text(query_string)).fetchall()
+                elif self.db_type == "postgres":
+                    table_names_query = text("""
+                        WITH tables_in_query AS (
+                            SELECT table_name 
+                            FROM information_schema.tables 
+                            WHERE table_catalog = current_database() 
+                                AND POSITION(table_name IN :query) > 0
+                        )
+                        SELECT 
+                            STRING_AGG(
+                                'SELECT MIN(' || column_name || ') AS min_date, MAX(' || column_name || ') AS max_date FROM ' || table_name, 
+                                ' UNION ALL '
+                            ) AS query_string
+                        FROM information_schema.columns
+                        WHERE table_name IN (SELECT table_name FROM tables_in_query)
+                            AND data_type IN ('date', 'timestamp');
+                    """)
 
-            min_date = min(row.min_date for row in final_result if row.min_date is not None)
-            max_date = max(row.max_date for row in final_result if row.max_date is not None)
-            print(f"Fetched min_date: {min_date}, max_date: {max_date} for query: {query}")
+                elif self.db_type == "sqlite":
+                    table_names_query = text("""
+                        SELECT name AS table_name 
+                        FROM sqlite_master 
+                        WHERE type='table' AND name LIKE :query;
+                    """)
 
-            return min_date, max_date
+                if table_names_query is None:
+                    print(f"Using default date range for unsupported db_type: {self.db_type}")
+                    return default_min_date, default_max_date
+
+                result = connection.execute(table_names_query, {"query": query})
+                row = result.fetchone()
+
+                if not row or not row[0]:
+                    print(f"No date columns found in tables for query. Using default date range.")
+                    return default_min_date, default_max_date
+
+                query_string = row[0]
+
+                try:
+                    final_result = connection.execute(text(query_string)).fetchall()
+
+                    valid_dates = [(row.min_date, row.max_date) for row in final_result 
+                    if row.min_date is not None and row.max_date is not None]
+
+                    if not valid_dates:
+                        print(f"No valid dates found in tables. Using default date range.")
+                        return default_min_date, default_max_date
+
+                    min_date = min(date[0] for date in valid_dates)
+                    max_date = max(date[1] for date in valid_dates)
+
+                    print(f"Fetched min_date: {min_date}, max_date: {max_date} for query: {query}")
+                    return min_date, max_date
+
+                except Exception as inner_e:
+                    print(f"Error executing date query: {inner_e}. Using default date range.")
+                    return default_min_date, default_max_date
+
+        except Exception as e:
+            print(f"Error fetching date range: {e}. Using default date range.")
+            return default_min_date, default_max_date
 
     def is_time_based_query(self, query: str) -> bool:
-        """
-        Determine if a query is time-based by looking for date functions and operations.
-        
-        :param query: The SQL query to analyze
-        :return: True if the query appears to be time-based
-        """
         time_patterns = [
             r'DATE_FORMAT', r'YEAR\s*\(', r'MONTH\s*\(', r'DAY\s*\(', 
             r'QUARTER\s*\(', r'WEEK\s*\(', r'DATE_SUB', r'DATE_ADD',
@@ -176,9 +210,6 @@ class FinanceQueryGenerator:
         return False
 
     def refine_time_based_query(self, query: str) -> str:
-        """
-        Replace [MIN_DATE] and [MAX_DATE] placeholders with actual date values.
-        """
         if not self.is_time_based_query(query):
             return query
 
@@ -217,13 +248,6 @@ class FinanceQueryGenerator:
         return response.strip()
 
     def generate_queries(self, role: str="Finance Manager", domain: str = "finance") -> SQLQueryResponse:
-        """
-        Generate SQL queries tailored to a specific role and domain
-        
-        :param role: User role (e.g., "Finance Manager", "CFO", "Financial Analyst")
-        :param domain: Business domain (e.g., "finance", "retail", "healthcare")
-        :return: Structured response with generated SQL queries
-        """
         try:
             draft_chain = self.draft_prompt | self.llm | self.parser
             draft_result = draft_chain.invoke({
@@ -263,13 +287,6 @@ class FinanceQueryGenerator:
             ])
     
     def get_queries_for_executor(self, role: str="Finance Manager", domain: str="finance") -> List[Dict[str, str]]:
-        """
-        Get a list of queries formatted for execution
-        
-        :param role: User role
-        :param domain: Business domain
-        :return: List of formatted query dictionaries
-        """
         response = self.generate_queries(role=role, domain=domain)
 
         return [
