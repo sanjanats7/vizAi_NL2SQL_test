@@ -1,16 +1,14 @@
-from typing import Dict, Any
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from app.models.sql_models import QueriesForExecutorResponse
-from app.services.query_generator import FinanceQueryGenerator,QueryRequest
+from app.services.query_generator import QueryGenerator,QueryRequest
 from app.config import GOOGLE_API_KEY
 import json
 
 router = APIRouter()
   
 @router.post("/", response_model=QueriesForExecutorResponse)
-
 async def get_queries(request_data: QueryRequest):
+    print(request_data)
     try:
         min_max_dates = [request_data.min_date, request_data.max_date]
         api_key = request_data.api_key or GOOGLE_API_KEY 
@@ -19,7 +17,7 @@ async def get_queries(request_data: QueryRequest):
         schema_str = json.dumps(request_data.db_schema, indent=2) 
 
         # schema_str = format_schema(request_data.db_schema)  
-        generator = FinanceQueryGenerator(
+        generator = QueryGenerator(
             # schema=request_data.schema,
             schema=schema_str,
             api_key=api_key,
@@ -36,3 +34,9 @@ async def get_queries(request_data: QueryRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+# class RequestData(BaseModel):
+#     text: str
+
+# @router.post("/test")
+# async def test_service(data: RequestData):
+#   return {"message": "data recieved."}

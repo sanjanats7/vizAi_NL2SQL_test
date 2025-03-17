@@ -29,7 +29,7 @@ class SQLQueryItem(BaseModel):
 class SQLQueryResponse(BaseModel):
     queries: List[SQLQueryItem] = Field(..., description="List of generated SQL queries")
 
-class FinanceQueryGenerator: 
+class QueryGenerator: 
     def __init__(self, schema: str, api_key: str, db_url: str,db_type:str, model: str = "gemini-1.5-pro"):
         self.schema = schema
         self.db_url = db_url

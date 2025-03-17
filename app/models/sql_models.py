@@ -63,7 +63,19 @@ class QueryRequest(BaseModel):
     db_type: str
     role: str
     domain: str
-    min_date: str = None
-    max_date: str = None
-    api_key: str = None
+    min_date: Optional[str] = None
+    max_date: Optional[str] = None
+    api_key: Optional[str] = None
+    
+class NLQResponse(BaseModel):
+    sql_query: str
+    explanation: str
+    chart_type:str
+    
+class NLQRequest(BaseModel):
+    nl_query: str
+    db_schema: str
+    db_type: str
+    api_key: Optional[str] = None
+
     

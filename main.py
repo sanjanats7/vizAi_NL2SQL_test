@@ -9,7 +9,7 @@ from config import (
 )
 from dotenv import load_dotenv
 from db_extract import DatabaseSchemaExtractor
-from query_generator import FinanceQueryGenerator
+from query_generator import QueryGenerator
 from query_exec import DatabaseQueryExecutor
 
 
@@ -20,7 +20,7 @@ def main():
         schema = schema_extractor.get_schema()
         print("Schema extracted successfully")
         
-        query_generator = FinanceQueryGenerator(
+        query_generator = QueryGenerator(
             schema=schema,
             api_key=GOOGLE_API_KEY,
             model=LLM_MODEL,

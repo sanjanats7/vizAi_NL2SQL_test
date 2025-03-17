@@ -8,7 +8,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from app.models.sql_models import SQLQueryItem, SQLQueryResponse,QueryRequest
 
 
-class FinanceQueryGenerator: 
+class QueryGenerator: 
     def __init__(self, schema: str, api_key: str, db_type: str, model: str = "gemini-1.5-pro"):
         self.schema = schema
         self.db_type = db_type.lower()
@@ -97,9 +97,6 @@ class FinanceQueryGenerator:
         return refined_query
 
     def extract_sql_from_response(self, response: str) -> str:
-        """
-        Extract SQL code from an LLM response.
-        """
         sql_match = re.search(r'```sql\s*(.*?)\s*```', response, re.DOTALL)
         if sql_match:
             return sql_match.group(1).strip()
@@ -110,10 +107,7 @@ class FinanceQueryGenerator:
             
         return response.strip()
 
-    def generate_queries(self, role: str = "Finance Manager", domain: str = "finance", min_max_dates: List[str] = []) -> SQLQueryResponse:
-        """
-        Generate SQL queries based on the given parameters
-        """
+    def generate_queries(self, role: str, domain: str , min_max_dates: List[str] = []) -> SQLQueryResponse:
         try:
             draft_chain = self.draft_prompt | self.llm | self.parser
             draft_result = draft_chain.invoke({
@@ -155,10 +149,8 @@ class FinanceQueryGenerator:
                 )
             ])
     
-    def get_queries_for_executor(self, role: str = "Finance Manager", domain: str = "finance", min_max_dates: List[str] = []) -> List[Dict[str, Any]]:
-        """
-        Get queries formatted for the executor
-        """
+    def get_queries_for_executor(self, role: str , domain: str , min_max_dates: List[str] = []) -> List[Dict[str, Any]]:
+
         response = self.generate_queries(role=role, domain=domain, min_max_dates=min_max_dates)
 
         return [
