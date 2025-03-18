@@ -5,7 +5,6 @@ from app.config import GOOGLE_API_KEY
 import json
 
 router = APIRouter()
-  
 @router.post("/", response_model=QueriesForExecutorResponse)
 async def get_queries(request_data: QueryRequest):
     print(request_data)
