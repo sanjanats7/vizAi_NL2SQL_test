@@ -97,6 +97,9 @@ class QueryGenerator:
         return refined_query
 
     def extract_sql_from_response(self, response: str) -> str:
+        """
+        Extract SQL code from an LLM response.
+        """
         sql_match = re.search(r'```sql\s*(.*?)\s*```', response, re.DOTALL)
         if sql_match:
             return sql_match.group(1).strip()

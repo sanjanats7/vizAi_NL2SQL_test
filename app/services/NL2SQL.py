@@ -52,7 +52,7 @@ class NLQToSQLGenerator:
                     - Generate an optimized SQL query ensuring accuracy and efficiency.
                     - Avoid unnecessary joins or complex subqueries unless required.
                     - Ensure the SQL adheres to best practices for the {db_type} database.
-                    - Provide a short, clear explanation of the query’s purpose.
+                    - Provide a short, clear explanation of the query’s purpose within 255 characters.
                     - For each query, recommend ONE of the following chart types that would best visualize the results:
                         * Bar: For comparing values across categories
                         * Line: For showing trends over time or continuous data
