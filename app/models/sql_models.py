@@ -17,6 +17,8 @@ class SQLQueryItem(BaseModel):
     @field_validator('chart_type')
     def chart_type_must_be_valid(cls, v):
         valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut", "Scatter"]
+        if v.lower() == "scatterplot":
+            return "Scatter"
         if v not in valid_chart_types:
             raise ValueError(f'Chart type must be one of: {", ".join(valid_chart_types)}')
         return v

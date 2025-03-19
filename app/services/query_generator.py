@@ -39,9 +39,9 @@ class QueryGenerator:
                 Instructions:
                 -{sql_syntax_instructions}
                 - Carefully analyze the schema to identify relevant tables and relationships for the given domain
-                - Generate exactly 10 insightful queries:
-                  * 5 should analyze time-based trends (monthly, quarterly, year-over-year)
-                  * 5 should provide non-time-based insights (distributions, ratios, aggregations)
+                - Generate exactly 30 insightful UNIQUE queries:
+                  * 15 should analyze time-based trends (monthly, quarterly, year-over-year)
+                  * 15 should provide non-time-based insights (distributions, ratios, aggregations)
                 - Each query should directly support decision-making for a {role} in the {domain} context
                 - Use appropriate SQL techniques based on the schema structure
                 - Assign a relevance score (0.0-1.0) indicating how valuable each query is for the role
