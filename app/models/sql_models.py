@@ -16,7 +16,7 @@ class SQLQueryItem(BaseModel):
     
     @field_validator('chart_type')
     def chart_type_must_be_valid(cls, v):
-        valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut", "Radian", "Scatterplot"]
+        valid_chart_types = ["Bar", "Line", "Area", "Pie", "Donut", "Scatter"]
         if v not in valid_chart_types:
             raise ValueError(f'Chart type must be one of: {", ".join(valid_chart_types)}')
         return v
@@ -83,19 +83,21 @@ class QueryWithId(BaseModel):
     query: str = Field(..., description="SQL query text")
 
 class QueryDateUpdateRequest(BaseModel):
-    query_id: str = Field(..., description="Unique identifier for the query")
-    query: str = Field(..., description="Original SQL query")
-    min_date: str = Field(..., description="New minimum date in YYYY-MM-DD format")
-    max_date: str = Field(..., description="New maximum date in YYYY-MM-DD format")
-
+    api_key:str
+    query_id: str 
+    query: str 
+    min_date: str 
+    max_date: str 
+    
 class QueryDateUpdateResponse(BaseModel):
-    query_id: str = Field(..., description="Unique identifier for the query")
-    original_query: str = Field(..., description="Original SQL query")
-    updated_query: str = Field(..., description="Updated SQL query with new date range")
-    success: bool = Field(..., description="Whether the update was successful")
+    query_id: str 
+    original_query: str 
+    updated_query: str 
+    success: bool 
     error: Optional[str] = Field(None, description="Error message if update failed")
 
 class TimeBasedQueriesUpdateRequest(BaseModel):
+    db_type:str
     queries: List[QueryWithId] = Field(..., description="List of time-based SQL queries to update")
     min_date: str = Field(..., description="New minimum date in YYYY-MM-DD format")
     max_date: str = Field(..., description="New maximum date in YYYY-MM-DD format")

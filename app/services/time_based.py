@@ -9,45 +9,55 @@ from app.models.sql_models import TimeBasedQueriesUpdateRequest,TimeBasedQueries
 def update_time_based_queries(
     api_key: str,
     query_request: TimeBasedQueriesUpdateRequest,
-    model: str = "gemini-1.5-pro"
+    model: str = "gemini-1.5-flash"
 ) -> TimeBasedQueriesUpdateResponse:
     llm = ChatGoogleGenerativeAI(
         model=model,
         google_api_key=api_key
     )
-    
+    db_type = query_request.db_type
     date_update_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a SQL expert specializing in modifying date ranges in SQL queries.
+    ("system", """You are an expert SQL query modifier specializing in updating time-based filters while preserving their original intent.
+      Task: Modify SQL Queries with New Date Ranges
+      Original SQL Query:
+      {original_query}
+      New Date Constraints:
+      - Min Date: {min_date}
+      - Max Date: {max_date}
+      
+      Guidelines for Query Modification
+      1. Identify all date-related conditions in the query, including:
+        - Direct date comparisons: WHERE order_date = '2023-01-01'
+        - BETWEEN clauses: BETWEEN '2023-01-01' AND '2023-12-31'
+        - Date functions: DATE_SUB, DATE_ADD, INTERVAL, EXTRACT, TIMESTAMPDIFF, UNIX_TIMESTAMP, etc.
+        - Relative date filters: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      2. Preserve relative date logic:
+        - If the query uses INTERVAL-based conditions (DATE_SUB(CURDATE(), INTERVAL 30 DAY)):
+          - Adjust the base reference date to {max_date}.
+          - Maintain the same interval logic.
+        - Example:
+          - Before: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+          - After: login_time >= DATE_SUB('{max_date}', INTERVAL 30 DAY)
+      3. Update static date literals:
+        - Replace earliest dates with {min_date}.
+        - Replace latest dates with {max_date}.
+        - Ensure all date-related expressions retain their original meaning.
+      4. Modify BETWEEN clauses correctly:
+        - Example:
+          - Before: order_date BETWEEN '2023-01-01' AND '2023-12-31'
+          - After: order_date BETWEEN '{min_date}' AND '{max_date}'
+      5. DO NOT modify any other parts of the query:
+        - Table structure, column names, joins, and logic must remain unchanged.
+        - Preserve SQL syntax, formatting, and comments exactly as in the original query.
+      
+      Expected Output
+      - Return only the updated SQL query (without explanations or formatting changes).
+      - Maintain indentation and code style exactly as in the input query.
+      - Do not enclose the query in triple backticks.
+          """),
+          ("human", "{original_query}")
+      ])
 
-            Original SQL query:
-            {original_query}
-            
-            New date range to use:
-            - Min date: {min_date}
-            - Max date: {max_date}
-            
-            Instructions:
-            1. Analyze the original query and identify ALL date filters, constraints, and comparisons
-            2. If [MIN_DATE] or [MAX_DATE] placeholders exist, replace them with the actual dates
-            3. If the query has actual date literals (like '2023-01-01'), update them as follows:
-              - Replace the earliest/minimum dates with the new min_date
-              - Replace the latest/maximum dates with the new max_date
-              - Maintain appropriate relative time spans for dates in between
-            4. Update any date ranges in BETWEEN clauses (e.g., BETWEEN '2023-01-01' AND '2023-12-31')
-            5. Modify any date-related functions (DATE_SUB, DATE_ADD, etc.) to align with the new range
-            6. For relative time expressions (e.g., INTERVAL statements), adjust them proportionally
-            7. DO NOT change the query logic, table structure, columns, or any non-date-related parts
-            8. Return ONLY the modified SQL query with no additional explanation
-            9. Maintain the exact format and style of the original query (indentation, comments, etc.)
-            10. Do not add triple backticks or other formatting around the SQL
-            11. Do not add any explanations or comments unless they were in the original query
-            
-            The goal is to make the query work with the new date range while preserving its original analytical intent and time window relationships.
-            
-            Output the complete SQL query with updated date ranges.
-        """),
-        ("human", "Here's the SQL query that needs date range updates.")
-    ])
     
     update_chain = date_update_prompt | llm
     
@@ -104,22 +114,9 @@ def update_query_date_range(
     query: str,
     min_date: str,
     max_date: str,
-    model: str = "gemini-1.5-pro"
+    db_type=str,
+    model: str = "gemini-1.5-flash"
 ) -> QueryDateUpdateResponse:
-    """
-    Update a single time-based SQL query with new date range.
-    
-    Args:
-        api_key: Google API key for Gemini model
-        query_id: Unique identifier for the query
-        query: SQL query to update
-        min_date: New minimum date in YYYY-MM-DD format
-        max_date: New maximum date in YYYY-MM-DD format
-        model: Model name to use (default: gemini-1.5-pro)
-        
-    Returns:
-        QueryDateUpdateResponse with original and updated query
-    """
     try:
         request = TimeBasedQueriesUpdateRequest(
             queries=[
@@ -129,7 +126,8 @@ def update_query_date_range(
                 )
             ],
             min_date=min_date,
-            max_date=max_date
+            max_date=max_date,
+            db_type=str(db_type)
         )
         
         response = update_time_based_queries(
@@ -147,4 +145,10 @@ def update_query_date_range(
             updated_query=query,
             success=False,
             error=str(e)
+        )
+        
+        response = update_time_based_queries(
+            api_key=api_key,
+            query_request=request,
+            model=model
         )

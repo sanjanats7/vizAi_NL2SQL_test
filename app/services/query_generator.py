@@ -54,7 +54,7 @@ class QueryGenerator:
                     * Pie: For showing proportions of a whole***
                     * Donut: For showing proportions with a focus on a central value
                     * Radian: For visualizing circular relationships or cyclical data
-                    * Scatterplot: For showing correlation between two variables
+                    * Scatter: For showing correlation between two variables
                 - Try to use a variety of chart types across your recommendations, including Radian and Scatterplot where appropriate.
 
     

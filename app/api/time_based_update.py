@@ -10,7 +10,7 @@ router = APIRouter()
 async def update_queries(request_data:QueryDateUpdateRequest):
     try:
         response = update_query_date_range(
-            api_key=request_data.api_key,
+            api_key=request_data.api_key or GOOGLE_API_KEY,
             query_id=request_data.query_id,
             query=request_data.query,
             min_date=request_data.min_date,
