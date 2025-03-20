@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
 
-from app.models.sql_models import SQLQueryItem, SQLQueryResponse,QueryRequest
+from app.models.sql_models import SQLQueryItem, SQLQueryResponse, QueryRequest
 
 
 class QueryGenerator: 
@@ -26,18 +26,21 @@ class QueryGenerator:
         }.get(self.db_type, "Write queries using standard SQL syntax.")
         
         self.draft_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert SQL query generator who creates insightful analytics queries tailored to specific business needs.
+            ("system", """You are an expert SQL query generator specialising in creating high value, schema restricted SQL queries tailored to specific business needs.
 
-                Given a database schema, user role, and business domain, generate 10 high-value SQL queries that would provide meaningful insights.
-
-                Database Schema:
+                Your Task
+                - Given a database schema, user role, and business domain, generate exactly 30 SQL queries for analytics.
+                - STRICT RULE: Only use tables and columns from the provided schema. Do not reference any table or field not explicitly listed.
+                - Each query should directly support decision-making for a {role} in the {domain} domain.
+                
+                Database Schema(Strictly enforced):
                 {schema}
     
                 User Role: {role}
                 Business Domain: {domain}
     
                 Instructions:
-                -{sql_syntax_instructions}
+                - {sql_syntax_instruction}
                 - Carefully analyze the schema to identify relevant tables and relationships for the given domain
                 - Generate exactly 30 insightful UNIQUE queries:
                   * 15 should analyze time-based trends (monthly, quarterly, year-over-year)
@@ -51,24 +54,24 @@ class QueryGenerator:
                     * Bar: For comparing values across categories
                     * Line: For showing trends over time or continuous data
                     * Area: For emphasizing the magnitude of trends over time
-                    * Pie: For showing proportions of a whole***
+                    * Pie: For showing proportions of a whole
                     * Donut: For showing proportions with a focus on a central value
                     * Scatter: For showing correlation between two variables
                 - Try to use a variety of chart types across your recommendations, including Radian and Scatterplot where appropriate.
-
     
                 {format_instructions}"""),
             ("human", "Generate SQL queries for the {role} role in the {domain} domain using the database schema provided.")
         ])
-        self.draft_prompt = self.draft_prompt.partial(format_instructions=self.parser.get_format_instructions(), sql_syntax_instructions=sql_syntax_instruction)
+        self.draft_prompt = self.draft_prompt.partial(format_instructions=self.parser.get_format_instructions(), sql_syntax_instruction=sql_syntax_instruction)
 
     def clean_sql(self, sql_query: str) -> str:
-        """
-        Remove markdown formatting (backticks) from SQL queries.
-        """
-        return sql_query.replace("```sql", "").replace("```", "").strip()
+        sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
+        sql_query = sql_query.replace("''", "'")  # Fix double quotes
+        return sql_query
+    
 
     def is_time_based_query(self, query: str) -> bool:
+
         time_patterns = [
             r'DATE_FORMAT', r'YEAR\s*\(', r'MONTH\s*\(', r'DAY\s*\(', 
             r'QUARTER\s*\(', r'WEEK\s*\(', r'DATE_SUB', r'DATE_ADD',
@@ -83,21 +86,21 @@ class QueryGenerator:
         return False
 
     def refine_time_based_query(self, query: str, min_date: str, max_date: str) -> str:
-        """
-        Replace date placeholders with actual min and max dates
-        """
+
         if not self.is_time_based_query(query):
             return query
 
         if not min_date or not max_date:
             return query
 
-        refined_query = query.replace("[MIN_DATE]", f"'{min_date}'").replace("[MAX_DATE]", f"'{max_date}'")
-        return refined_query
+        query = query.replace("[MIN_DATE]", min_date).replace("[MAX_DATE]", max_date)
+        query = query.replace("''", "'")
+
+        return query
 
     def extract_sql_from_response(self, response: str) -> str:
         """
-        Extract SQL code from an LLM response.
+        Extract SQL query from a response that might contain markdown formatting.
         """
         sql_match = re.search(r'```sql\s*(.*?)\s*```', response, re.DOTALL)
         if sql_match:
@@ -109,7 +112,8 @@ class QueryGenerator:
             
         return response.strip()
 
-    def generate_queries(self, role: str, domain: str , min_max_dates: List[str] = []) -> SQLQueryResponse:
+    def generate_queries(self, role: str, domain: str, min_max_dates: List[str] = []) -> SQLQueryResponse:
+
         try:
             draft_chain = self.draft_prompt | self.llm | self.parser
             draft_result = draft_chain.invoke({
@@ -151,8 +155,7 @@ class QueryGenerator:
                 )
             ])
     
-    def get_queries_for_executor(self, role: str , domain: str , min_max_dates: List[str] = []) -> List[Dict[str, Any]]:
-
+    def get_queries_for_executor(self, role: str, domain: str, min_max_dates: List[str] = []) -> List[Dict[str, Any]]:
         response = self.generate_queries(role=role, domain=domain, min_max_dates=min_max_dates)
 
         return [

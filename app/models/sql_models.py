@@ -1,5 +1,7 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field, field_validator
+from typing import Union
+from datetime import datetime
 
 class SQLQueryItem(BaseModel):
     question: str 
@@ -65,8 +67,8 @@ class QueryRequest(BaseModel):
     db_type: str
     role: str
     domain: str
-    min_date: Optional[str] = None
-    max_date: Optional[str] = None
+    min_date: Optional[Union[datetime, str]] = None
+    max_date: Optional[Union[datetime, str]] = None
     api_key: Optional[str] = None
     
 class NLQResponse(BaseModel):
@@ -81,28 +83,34 @@ class NLQRequest(BaseModel):
     api_key: Optional[str] = None
     
 class QueryWithId(BaseModel):
-    query_id: str = Field(..., description="Unique identifier for the query")
-    query: str = Field(..., description="SQL query text")
-
-class QueryDateUpdateRequest(BaseModel):
-    api_key:str
-    query_id: str 
-    query: str 
-    min_date: str 
-    max_date: str 
+    query_id: str = Field
+    query: str = Field
+# class QueryDateUpdateRequest(BaseModel):
+#     api_key:Optional[str] = None
+#     queries:List[QueryWithID]
+#     query: str 
+#     min_date: str 
+#     max_date: str 
     
+class BatchQueryDateUpdateRequest(BaseModel):
+    api_key: Optional[str] = None
+    queries: List[QueryWithId]
+    min_date: str
+    max_date: str
+    db_type: str
+
 class QueryDateUpdateResponse(BaseModel):
     query_id: str 
     original_query: str 
     updated_query: str 
     success: bool 
-    error: Optional[str] = Field(None, description="Error message if update failed")
+    error: Optional[str]
 
 class TimeBasedQueriesUpdateRequest(BaseModel):
     db_type:str
-    queries: List[QueryWithId] = Field(..., description="List of time-based SQL queries to update")
-    min_date: str = Field(..., description="New minimum date in YYYY-MM-DD format")
-    max_date: str = Field(..., description="New maximum date in YYYY-MM-DD format")
+    queries: List[QueryWithId] 
+    min_date: str 
+    max_date: str 
 
 class TimeBasedQueriesUpdateResponse(BaseModel):
-    updated_queries: List[QueryDateUpdateResponse] = Field(..., description="List of query update results")
+    updated_queries: List[QueryDateUpdateResponse]

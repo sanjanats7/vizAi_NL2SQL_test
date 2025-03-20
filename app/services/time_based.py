@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 import re
 from app.models.sql_models import TimeBasedQueriesUpdateRequest,TimeBasedQueriesUpdateResponse,QueryDateUpdateResponse,QueryWithId
 
-def update_time_based_queries(
+async def update_time_based_queries(
     api_key: str,
     query_request: TimeBasedQueriesUpdateRequest,
     model: str = "gemini-1.5-flash"
@@ -18,45 +18,44 @@ def update_time_based_queries(
     db_type = query_request.db_type
     date_update_prompt = ChatPromptTemplate.from_messages([
     ("system", """You are an expert SQL query modifier specializing in updating time-based filters while preserving their original intent.
-      Task: Modify SQL Queries with New Date Ranges
-      Original SQL Query:
-      {original_query}
-      New Date Constraints:
-      - Min Date: {min_date}
-      - Max Date: {max_date}
-      
-      Guidelines for Query Modification
-      1. Identify all date-related conditions in the query, including:
-        - Direct date comparisons: WHERE order_date = '2023-01-01'
-        - BETWEEN clauses: BETWEEN '2023-01-01' AND '2023-12-31'
-        - Date functions: DATE_SUB, DATE_ADD, INTERVAL, EXTRACT, TIMESTAMPDIFF, UNIX_TIMESTAMP, etc.
-        - Relative date filters: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-      2. Preserve relative date logic:
-        - If the query uses INTERVAL-based conditions (DATE_SUB(CURDATE(), INTERVAL 30 DAY)):
-          - Adjust the base reference date to {max_date}.
-          - Maintain the same interval logic.
-        - Example:
-          - Before: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-          - After: login_time >= DATE_SUB('{max_date}', INTERVAL 30 DAY)
-      3. Update static date literals:
-        - Replace earliest dates with {min_date}.
-        - Replace latest dates with {max_date}.
-        - Ensure all date-related expressions retain their original meaning.
-      4. Modify BETWEEN clauses correctly:
-        - Example:
-          - Before: order_date BETWEEN '2023-01-01' AND '2023-12-31'
-          - After: order_date BETWEEN '{min_date}' AND '{max_date}'
-      5. DO NOT modify any other parts of the query:
-        - Table structure, column names, joins, and logic must remain unchanged.
-        - Preserve SQL syntax, formatting, and comments exactly as in the original query.
-      
-      Expected Output
-      - Return only the updated SQL query (without explanations or formatting changes).
-      - Maintain indentation and code style exactly as in the input query.
-      - Do not enclose the query in triple backticks.
-          """),
-          ("human", "{original_query}")
-      ])
+        Task: Modify SQL Queries with New Date Ranges
+        Original SQL Query:
+        {original_query}
+        New Date Constraints:
+        - Min Date: {min_date}
+        - Max Date: {max_date}
+        Guidelines for Query Modification
+        1. Identify all date-related conditions in the query, including:
+            - Direct date comparisons: WHERE order_date = '2023-01-01'
+            - BETWEEN clauses: BETWEEN '2023-01-01' AND '2023-12-31'
+            - Date functions: DATE_SUB, DATE_ADD, INTERVAL, EXTRACT, TIMESTAMPDIFF, UNIX_TIMESTAMP, etc.
+            - Relative date filters: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        2. Preserve relative date logic:
+            - If the query uses INTERVAL-based conditions (DATE_SUB(CURDATE(), INTERVAL 30 DAY)):
+            - Adjust the base reference date to {max_date}.
+            - Maintain the same interval logic.
+            - Example:
+            - Before: login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            - After: login_time >= DATE_SUB('{max_date}', INTERVAL 30 DAY)
+        3. Update static date literals:
+            - Replace earliest dates with {min_date}.
+            - Replace latest dates with {max_date}.
+            - Ensure all date-related expressions retain their original meaning.
+        4. Modify BETWEEN clauses correctly:
+            - Example:
+            - Before: order_date BETWEEN '2023-01-01' AND '2023-12-31'
+            - After: order_date BETWEEN '{min_date}' AND '{max_date}'
+        5. DO NOT modify any other parts of the query:
+            - Table structure, column names, joins, and logic must remain unchanged.
+            - Preserve SQL syntax, formatting, and comments exactly as in the original query.
+
+        Expected Output
+        - Return only the updated SQL query (without explanations or formatting changes).
+        - Maintain indentation and code style exactly as in the input query.
+        - Do not enclose the query in triple backticks.
+            """),
+            ("human", "{original_query}")
+        ])
 
     
     update_chain = date_update_prompt | llm
@@ -147,8 +146,8 @@ def update_query_date_range(
             error=str(e)
         )
         
-        response = update_time_based_queries(
-            api_key=api_key,
-            query_request=request,
-            model=model
-        )
+        # response = update_time_based_queries(
+        #     api_key=api_key,
+        #     query_request=request,
+        #     model=model
+        # )
