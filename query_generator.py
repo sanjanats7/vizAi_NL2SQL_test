@@ -108,8 +108,8 @@ class QueryGenerator:
         return sql_query.replace("```sql", "").replace("```", "").strip()
 
     def fetch_relevant_min_max_dates(self, query: str) -> tuple:
-        default_min_date = "2020-01-01"
-        default_max_date = "2023-12-31"
+        # default_min_date = "2020-01-01"
+        # default_max_date = "2023-12-31"
 
         try:
             engine = create_engine(self.db_url)

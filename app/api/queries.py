@@ -56,7 +56,7 @@ async def get_queries(request_data: QueryRequest):
             domain=request_data.domain,
             min_max_dates=min_max_dates
         )
-        
+        print(queries)
         return QueriesForExecutorResponse(queries=queries)
     
     except Exception as e:

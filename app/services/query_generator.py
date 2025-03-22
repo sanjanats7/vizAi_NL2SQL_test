@@ -94,7 +94,9 @@ class QueryGenerator:
             return query
 
         query = query.replace("[MIN_DATE]", min_date).replace("[MAX_DATE]", max_date)
+        
         query = query.replace("''", "'")
+        print(query)
 
         return query
 
@@ -131,8 +133,9 @@ class QueryGenerator:
             for item in draft_result.queries:
                 if item.is_time_based and min_date and max_date:
                     refined_query = self.refine_time_based_query(item.query, min_date, max_date)
+                    refined_explanation = self.refine_time_based_query(item.question,min_date,max_date)
                     refined_queries.append(SQLQueryItem(
-                        question=item.question,
+                        question=refined_explanation,
                         query=refined_query,
                         relevance=item.relevance,
                         is_time_based=True,
