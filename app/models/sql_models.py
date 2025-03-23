@@ -111,6 +111,8 @@ class TimeBasedQueriesUpdateRequest(BaseModel):
     queries: List[QueryWithId] 
     min_date: str 
     max_date: str 
+    api_key:Optional[str] = None
+
 
 class TimeBasedQueriesUpdateResponse(BaseModel):
     updated_queries: List[QueryDateUpdateResponse]

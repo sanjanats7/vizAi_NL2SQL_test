@@ -69,21 +69,25 @@ async def update_time_based_queries(
     
     updated_queries = []
     
-    for query_item in query_request["queries"]:
+    if isinstance(query_request, dict):
+        query_request = TimeBasedQueriesUpdateRequest(**query_request)
+        
+    for query_item in query_request.queries:
+        # query_dict = query_item.model_dump()  # Convert Pydantic model to dict
         try:
             result = update_chain.invoke({
-                "original_query": query_item["query"],
-                "min_date": query_request["min_date"],
-                "max_date": query_request["max_date"],
-                "db_type":  query_request["db_type"]
+                "original_query": query_item.query,
+                "min_date": query_request.min_date,
+                "max_date": query_request.max_date,
+                "db_type":  query_request.db_type
 
             })
             
             updated_query = extract_sql_from_response(result.content)
             
             updated_queries.append({
-                "query_id": query_item["query_id"],
-                "original_query": query_item["query"],
+                "query_id": query_item.query_id,
+                "original_query": query_item.query,
                 "updated_query": updated_query,
                 "success": True,
                 "error": None
