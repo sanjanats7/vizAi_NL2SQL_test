@@ -85,12 +85,8 @@ class NLQRequest(BaseModel):
 class QueryWithId(BaseModel):
     query_id: str = Field
     query: str = Field
-# class QueryDateUpdateRequest(BaseModel):
-#     api_key:Optional[str] = None
-#     queries:List[QueryWithID]
-#     query: str 
-#     min_date: str 
-#     max_date: str 
+    explanation: str
+
     
 class BatchQueryDateUpdateRequest(BaseModel):
     api_key: Optional[str] = None

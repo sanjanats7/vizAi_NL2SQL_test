@@ -15,6 +15,8 @@ async def convert_nlq_to_sql(request_data: NLQRequest):
             db_schema=request_data.db_schema,
             db_type=request_data.db_type
         )
+        if result.chart_type.lower() == 'scatterplot':
+            result.chart_type = "scatter"
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating SQL: {str(e)}")

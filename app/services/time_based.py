@@ -5,7 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 import re
 import json
-from app.models.sql_models import TimeBasedQueriesUpdateRequest,TimeBasedQueriesUpdateResponse,QueryDateUpdateResponse,QueryWithId
+from app.models.sql_models import TimeBasedQueriesUpdateRequest
 
 async def update_time_based_queries(
     api_key: str,
@@ -29,6 +29,9 @@ async def update_time_based_queries(
     New Date Constraints:
     - Min Date: {min_date}
     - Max Date: {max_date}
+    
+    Explanation:
+    {original_explanation}
 
     Guidelines for Query Modification:
 
@@ -56,14 +59,27 @@ async def update_time_based_queries(
     5. DO NOT modify any other parts of the query:
         - Table structure, column names, joins, and logic must remain unchanged.
         - Preserve SQL syntax, formatting, and comments exactly as in the original query.
-
-    Expected Output:
-    - Return only the updated SQL query (without explanations or formatting changes).
-    - Maintain indentation and code style exactly as in the input query.
+    3. Modify explanations accordingly:
+        - Ensure explanations correctly reference the updated date range.
+        - Maintain clarity and conciseness.
+    **Expected Output Format (Strictly Follow This)**:
+    ```
+    ```sql
+    UPDATED_SQL_QUERY_HERE
+    ```
+    
+    ```text
+    UPDATED_EXPLANATION_HERE
+    ```
+    ```
+    Ensure that the SQL query remains valid and the explanation correctly reflects the changes made.
+    
     """),
-    ("human", "{original_query}")
+    ("human", "{original_query}\n {original_explanation}")
 ])
-
+# Expected Output:
+#     - Return only the updated SQL query followed by the updated explanation.
+#     - Maintain indentation and code style exactly as in the input query.
 
     update_chain = date_update_prompt | llm
     
@@ -77,18 +93,21 @@ async def update_time_based_queries(
         try:
             result = update_chain.invoke({
                 "original_query": query_item.query,
+                "original_explanation":query_item.explanation,
                 "min_date": query_request.min_date,
                 "max_date": query_request.max_date,
                 "db_type":  query_request.db_type
 
             })
             
-            updated_query = extract_sql_from_response(result.content)
+            updated_query, updated_explanation = extract_sql_and_explanation(result.content)
             
             updated_queries.append({
                 "query_id": query_item.query_id,
                 "original_query": query_item.query,
+                "original_explanation":query_item.explanation,
                 "updated_query": updated_query,
+                "updated_explanation":updated_explanation,
                 "success": True,
                 "error": None
             })
@@ -115,10 +134,22 @@ def extract_sql_from_response(response: str) -> str:
         
     return response.strip()
 
+def extract_sql_and_explanation(response: str) -> tuple:
+    sql_match = re.search(r'```sql\s*(.*?)\s*```', response, re.DOTALL)
+    explanation_match = re.search(r'```text\s*(.*?)\s*```', response, re.DOTALL)
+
+    sql_query = sql_match.group(1).strip() if sql_match else "No valid SQL found."
+    explanation = explanation_match.group(1).strip() if explanation_match else "No explanation provided."
+
+    return sql_query, explanation
+
+
+
 def update_query_date_range(
     api_key: str,
     query_id: str,
     query: str,
+    explanation:str,
     min_date: str,
     max_date: str,
     db_type:str,
@@ -126,7 +157,7 @@ def update_query_date_range(
 ) -> dict:
     try:
         request = {
-            "queries": [{"query_id": query_id, "query": query}],
+            "queries": [{"query_id": query_id, "query": query,"explanation":explanation}],
             "min_date": min_date,
             "max_date": max_date,
             "db_type": str(db_type)

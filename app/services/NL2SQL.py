@@ -21,7 +21,6 @@ class NLQToSQLGenerator:
         return {
             "mysql": "Write queries ONLY using syntax compatible with MySQL database.",
             "postgres": "Write queries ONLY using syntax compatible with PostgreSQL database.",
-            "sqlite": "Write queries ONLY using syntax compatible with SQLite database."
         }.get(db_type, "Write queries using standard SQL syntax.")
 
     def extract_sql_from_response(self, response: str) -> str:
@@ -53,15 +52,21 @@ class NLQToSQLGenerator:
                     - Avoid unnecessary joins or complex subqueries unless required.
                     - Ensure the SQL adheres to best practices for the {db_type} database.
                     - Provide a short, clear explanation of the query’s purpose within 255 characters.
+                    - Use ONLY the tables and columns provided in {db_schema}.
+                    - Do NOT assume or invent tables, columns, or relationships.
+                    - Ensure that all joins are valid based on {db_schema}.
+                    - Use `GROUP BY` and `ORDER BY` correctly when retrieving aggregated data.
+                    - Prioritize primary keys and indexed columns for efficiency.
+                    - After generating the query, verify its correctness against "{nl_query}".
+                    - If the schema does not support the request, return: "Error: Required data not found in schema."
                     - For each query, recommend ONE of the following chart types that would best visualize the results:
                         * Bar: For comparing values across categories
                         * Line: For showing trends over time or continuous data
                         * Area: For emphasizing the magnitude of trends over time
                         * Pie: For showing proportions of a whole
                         * Donut: For showing proportions with a focus on a central value
-                        * Radian: For visualizing circular relationships or cyclical data
                         * Scatterplot: For showing correlation between two variables
-                    - Try to use a variety of chart types across your recommendations, including Radian and Scatterplot where appropriate.
+                    - Try to use a variety of chart types across your recommendations, including Scatterplot where appropriate.
                     
                     {format_instructions}"""),
                 ("human", "Convert the following natural language question into an SQL query: {nl_query}")
