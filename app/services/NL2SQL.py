@@ -45,6 +45,15 @@ class NLQToSQLGenerator:
                     Database Schema:
                     {db_schema}
                     
+                    Strict Rules:
+                    -Use ONLY tables and columns explicitly listed in {db_schema}.
+                    -DO NOT assume or invent any tables, columns, or relationships.
+                    -Verify all table joins based on actual foreign key relationships in {db_schema}.
+                    -Avoid unnecessary joins or complex subqueries unless absolutely necessary.
+                    -Prioritize indexed columns for filtering (`WHERE`) and sorting (`ORDER BY`).
+                    - If the schema does not support the query request, return:
+                    "Error: Required data not found in schema."
+                    
                     Instructions:
                     - {sql_syntax_instructions}
                     - Understand the question intent and map it to relevant tables and columns.
@@ -72,6 +81,7 @@ class NLQToSQLGenerator:
                 ("human", "Convert the following natural language question into an SQL query: {nl_query}")
             ])
 
+
             query_prompt = query_prompt.partial(
                 format_instructions=self.parser.get_format_instructions(), 
                 sql_syntax_instructions=self.get_sql_syntax_instruction(db_type),
@@ -81,7 +91,7 @@ class NLQToSQLGenerator:
             query_chain = query_prompt | self.llm | self.parser
             response = query_chain.invoke({
                 "db_schema": db_schema,
-                "nl_query": nl_query
+                "nl_query": nl_query,
             })
             
             sql_query = self.extract_sql_from_response(response.sql_query)
