@@ -1,10 +1,14 @@
 import re
+import logging
+import traceback
 from typing import Dict, Any
 import google.generativeai as genai
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
 from app.models.sql_models import NLQResponse
+
+logger = logging.getLogger("nlq_to_sql_generator")
 
 class NLQToSQLGenerator:
     def __init__(self, api_key: str, model: str = "gemini-1.5-pro"):
@@ -37,6 +41,8 @@ class NLQToSQLGenerator:
     
     def convert_nlq_to_sql(self, nl_query: str, db_schema: str, db_type: str) -> NLQResponse:
         try:
+            logger.info(f"Processing NLQ -> SQL | DB Type: {db_type} | Query: {nl_query}")
+            logger.debug(f"Schema (truncated): {db_schema[:1000]}...")  
             query_prompt = ChatPromptTemplate.from_messages([
                 ("system", """You are an expert SQL query generator capable of converting natural language questions into optimized SQL queries.
                     
@@ -95,12 +101,15 @@ class NLQToSQLGenerator:
             })
             
             sql_query = self.extract_sql_from_response(response.sql_query)
+            logger.info(f"Generated SQL Query: {sql_query}")
+
             return NLQResponse(
                 sql_query=sql_query,
                 explanation=response.explanation,
                 chart_type=response.chart_type
             )
         except Exception as e:
+            logger.error(f"Error in NLQ to SQL conversion: {str(e)}\n{traceback.format_exc()}")
             return NLQResponse(
                 sql_query=f"-- Error: {str(e)}",
                 explanation="Error generating SQL query from natural language.",

@@ -1,5 +1,7 @@
 from typing import List, Dict, Any, Optional
 import google.generativeai as genai
+import logging
+import traceback
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
@@ -7,11 +9,16 @@ import re
 import json
 from app.models.sql_models import TimeBasedQueriesUpdateRequest
 
+logger = logging.getLogger("update_queries")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 async def update_time_based_queries(
     api_key: str,
     query_request: dict,
     model: str = "gemini-1.5-flash"
 ) -> dict:
+    logger.info("Starting update_time_based_queries process...")
+
     llm = ChatGoogleGenerativeAI(
         model=model,
         google_api_key=api_key
@@ -88,9 +95,13 @@ async def update_time_based_queries(
     if isinstance(query_request, dict):
         query_request = TimeBasedQueriesUpdateRequest(**query_request)
         
+    logger.info(f"Processing {len(query_request.queries)} queries for update...")
+
     for query_item in query_request.queries:
         # query_dict = query_item.model_dump()  # Convert Pydantic model to dict
         try:
+            logger.info(f"Updating Query ID: {query_item.query_id} | DB Type: {query_request.db_type} | Min Date: {query_request.min_date} | Max Date: {query_request.max_date}")
+
             result = update_chain.invoke({
                 "original_query": query_item.query,
                 "original_explanation":query_item.explanation,
@@ -102,6 +113,9 @@ async def update_time_based_queries(
             
             updated_query, updated_explanation = extract_sql_and_explanation(result.content)
             
+            logger.info(f"Updated Query: {updated_query}")
+            logger.info(f"Updated Explanation: {updated_explanation}")
+
             updated_queries.append({
                 "query_id": query_item.query_id,
                 "original_query": query_item.query,
@@ -113,6 +127,7 @@ async def update_time_based_queries(
             })
             
         except Exception as e:
+            logger.error(f"Error updating Query ID: {query_item.query_id} - {str(e)}\n{traceback.format_exc()}")
             updated_queries.append({
                 "query_id": query_item["query_id"],
                 "original_query": query_item["query"],
@@ -120,7 +135,8 @@ async def update_time_based_queries(
                 "success": False,
                 "error": str(e)
             })
-    
+            
+    logger.info("Update process completed.")
     return {"updated_queries": updated_queries}
 
 def extract_sql_from_response(response: str) -> str:
@@ -156,6 +172,7 @@ def update_query_date_range(
     model: str = "gemini-1.5-flash"
 ) -> dict:
     try:
+        logger.info(f"Updating a single query | Query ID: {query_id} | DB Type: {db_type}")
         request = {
             "queries": [{"query_id": query_id, "query": query,"explanation":explanation}],
             "min_date": min_date,
@@ -169,9 +186,13 @@ def update_query_date_range(
             model=model
         )
         
-        return response["updated_queries"][0]
+        updated_query = response["updated_queries"][0]
+        logger.info(f"Updated Query ID: {query_id} | Success: {updated_query['success']}")
+        return updated_query
+
         
     except Exception as e:
+        logger.error(f"Error updating single query {query_id}: {str(e)}\n{traceback.format_exc()}")
         return {
             "query_id": query_id,
             "original_query": query,

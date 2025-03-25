@@ -1,4 +1,6 @@
 import re
+import logging
+import traceback
 from typing import List, Dict, Any, Optional, Tuple
 import google.generativeai as genai
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,7 +9,8 @@ from langchain_core.output_parsers import PydanticOutputParser
 
 from app.models.sql_models import SQLQueryItem, SQLQueryResponse, QueryRequest
 
-
+logger = logging.getLogger("query_generator")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 class QueryGenerator: 
     def __init__(self, schema: str, api_key: str, db_type: str, model: str = "gemini-1.5-pro"):
         self.schema = schema
@@ -25,6 +28,8 @@ class QueryGenerator:
             "sqlite": "Write queries ONLY using syntax compatible with SQLite database."
         }.get(self.db_type, "Write queries using standard SQL syntax.")
         
+        logger.info(f"Initialized QueryGenerator | DB Type: {self.db_type}")
+
         self.draft_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert SQL query generator specialising in creating high value, schema restricted SQL queries tailored to specific business needs.
 
@@ -96,6 +101,8 @@ class QueryGenerator:
         query = query.replace("[MIN_DATE]", min_date).replace("[MAX_DATE]", max_date)
         
         query = query.replace("''", "'")
+        logger.info(f"Refined Time-Based Query: {query}")
+
         print(query)
 
         return query
@@ -115,8 +122,9 @@ class QueryGenerator:
         return response.strip()
 
     def generate_queries(self, role: str, domain: str, min_max_dates: List[str] = []) -> SQLQueryResponse:
-
         try:
+            logger.info(f"Generating Queries | Role: {role} | Domain: {domain}")
+            logger.debug(f"Schema (truncated): {self.schema[:500]}...")  # Log first 500 chars of schema
             draft_chain = self.draft_prompt | self.llm | self.parser
             draft_result = draft_chain.invoke({
                 "schema": self.schema,
@@ -143,11 +151,12 @@ class QueryGenerator:
                     ))
                 else:
                     refined_queries.append(item)
-            
+                    
+            logger.info(f"Generated {len(refined_queries)} SQL Queries Successfully.")
             return SQLQueryResponse(queries=refined_queries)
         
         except Exception as e:
-            print(f"Error generating queries: {e}")
+            logger.error(f"Error generating queries: {str(e)}\n{traceback.format_exc()}")
             return SQLQueryResponse(queries=[
                 SQLQueryItem(
                     question="Error generating queries",
@@ -161,7 +170,7 @@ class QueryGenerator:
     def get_queries_for_executor(self, role: str, domain: str, min_max_dates: List[str] = []) -> List[Dict[str, Any]]:
         response = self.generate_queries(role=role, domain=domain, min_max_dates=min_max_dates)
 
-        return [
+        queries_list = [
             {
                 "query": item.query,
                 "explanation": item.question,
@@ -171,3 +180,5 @@ class QueryGenerator:
             }
             for item in response.queries
         ]
+        logger.info(f"Returning {len(queries_list)} Queries for Execution.")
+        return queries_list
