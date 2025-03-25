@@ -1,3 +1,4 @@
 .env
 vizEnv/
 __pycache_/
+*.pyc
