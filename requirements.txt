@@ -2,7 +2,6 @@ google-generativeai==0.8.4
 langchain==0.3.19
 langchain-core==0.3.41
 langchain-google-genai==2.0.10
-langchainplus-sdk==0.0.20
 langchain-ollama==0.2.3
 langchain-openai==0.3.7
 langchain-text-splitters==0.3.6
