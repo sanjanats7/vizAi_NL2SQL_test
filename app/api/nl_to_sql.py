@@ -19,6 +19,8 @@ async def convert_nlq_to_sql(request_data: NLQRequest):
         sql_generator = NLQToSQLGenerator(api_key)
 
         logger.info(f"Using database type: {request_data.db_type}")
+
+        logger.info(f"DB Schema: {request_data.db_schema}")
         
         result = sql_generator.convert_nlq_to_sql(
             nl_query=request_data.nl_query,

@@ -78,7 +78,7 @@ class NLQResponse(BaseModel):
     
 class NLQRequest(BaseModel):
     nl_query: str
-    db_schema: str
+    db_schema: dict # changed str to dict
     db_type: str
     api_key: Optional[str] = None
     

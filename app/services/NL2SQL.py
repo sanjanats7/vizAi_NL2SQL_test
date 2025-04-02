@@ -39,10 +39,14 @@ class NLQToSQLGenerator:
         
         return response.strip()
     
-    def convert_nlq_to_sql(self, nl_query: str, db_schema: str, db_type: str) -> NLQResponse:
+    def convert_nlq_to_sql(self, nl_query: str, db_schema: dict, db_type: str) -> NLQResponse:
         try:
             logger.info(f"Processing NLQ -> SQL | DB Type: {db_type} | Query: {nl_query}")
-            logger.debug(f"Schema (truncated): {db_schema[:1000]}...")  
+            # logger.debug(f"Schema (truncated): {db_schema[:1000]}...")  
+            
+            # Modified the prompt template to generate atleast 2 related fields and restricting the rows 
+            # to process only 100k 
+
             query_prompt = ChatPromptTemplate.from_messages([
                 ("system", """You are an expert SQL query generator capable of converting natural language questions into optimized SQL queries.
                     
@@ -52,11 +56,11 @@ class NLQToSQLGenerator:
                     {db_schema}
                     
                     Strict Rules:
-                    -Use ONLY tables and columns explicitly listed in {db_schema}.
-                    -DO NOT assume or invent any tables, columns, or relationships.
-                    -Verify all table joins based on actual foreign key relationships in {db_schema}.
-                    -Avoid unnecessary joins or complex subqueries unless absolutely necessary.
-                    -Prioritize indexed columns for filtering (`WHERE`) and sorting (`ORDER BY`).
+                    - Use ONLY tables and columns explicitly listed in {db_schema}.
+                    - DO NOT assume or invent any tables, columns, or relationships.
+                    - Verify all table joins based on actual foreign key relationships in {db_schema}.
+                    - Avoid unnecessary joins or complex subqueries unless absolutely necessary.
+                    - Prioritize indexed columns for filtering (`WHERE`) and sorting (`ORDER BY`).
                     - If the schema does not support the query request, return:
                     "Error: Required data not found in schema."
                     
@@ -64,6 +68,9 @@ class NLQToSQLGenerator:
                     - {sql_syntax_instructions}
                     - Understand the question intent and map it to relevant tables and columns.
                     - Generate an optimized SQL query ensuring accuracy and efficiency.
+                    - Restrict data processing to approximately 100,000 rows using `TABLESAMPLE SYSTEM (1)` for large tables (e.g., 'sales_data' or 'sales_data_partitioned') to sample 1% of 10 million rows, unless the query naturally returns fewer rows.
+                    - Include at least TWO highly related columns in the SELECT statement that provide meaningful context together (e.g., product_name and revenue, or timestamp and sales_channel).
+                    - Choose columns that are logically related based on the query intent and schema structure (e.g., avoid unrelated pairs like customer_id and is_weekend unless explicitly relevant).
                     - Avoid unnecessary joins or complex subqueries unless required.
                     - Ensure the SQL adheres to best practices for the {db_type} database.
                     - Provide a short, clear explanation of the query’s purpose within 255 characters.
